@@ -173,6 +173,11 @@ Bearer <your_token>
 
 ---
 
+## Link for opening the backend :
+
+https://notes-manager-1-kagv.onrender.com/docs
+
+
 ## ⭐ If you like this project
 
 Give it a ⭐ on GitHub!
