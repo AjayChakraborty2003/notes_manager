@@ -13,17 +13,19 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
-# =========================
+
 # LOAD ENV
-# =========================
+
 
 load_dotenv()
 
+# API USAGE
+
 app = FastAPI(title="AI Notes API with Auth")
 
-# =========================
+
 # ENV
-# =========================
+
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MONGO_URI = os.getenv("MONGO_URI")
@@ -34,15 +36,15 @@ if not OPENAI_API_KEY:
 if not MONGO_URI:
     raise Exception("MONGO_URI missing")
 
-# =========================
+
 # OPENAI
-# =========================
+
 
 client_ai = OpenAI(api_key=OPENAI_API_KEY)
 
-# =========================
+
 # DATABASE
-# =========================
+
 
 client_db = MongoClient(MONGO_URI)
 db = client_db["notes_db"]
@@ -58,9 +60,9 @@ try:
 except Exception as e:
     print("Index warning:", e)
 
-# =========================
+
 # AUTH CONFIG
-# =========================
+
 
 SECRET_KEY = "supersecretkey"
 ALGORITHM = "HS256"
@@ -69,9 +71,9 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
-# =========================
+
 # MODELS
-# =========================
+
 
 class Note(BaseModel):
     title: str
@@ -89,9 +91,9 @@ class User(BaseModel):
     username: str
     password: str
 
-# =========================
+
 # AUTH UTILS
-# =========================
+
 
 def hash_password(password: str):
     return pwd_context.hash(password)
@@ -118,9 +120,11 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-# =========================
+
 # AUTH ROUTES
-# =========================
+
+
+# USER SIGNUP
 
 @app.post("/signup")
 def signup(user: User):
@@ -136,6 +140,8 @@ def signup(user: User):
 
     return {"status": "success", "message": "User created"}
 
+
+# USER LOGIN 
 
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -154,12 +160,13 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         "token_type": "bearer"
     }
 
-# =========================
-# NOTES ROUTES (IMPORTANT ORDER)
-# =========================
 
-# 🔥 SEARCH FIRST (fixes your bug)
-@app.get("/notes/search")
+# NOTES ROUTES 
+
+
+# SEARCH NOTES BY QUERY
+
+ @app.get("/notes/search")
 def search_notes(query: str, user: str = Depends(get_current_user)):
     safe_query = re.escape(query)
 
@@ -176,6 +183,8 @@ def search_notes(query: str, user: str = Depends(get_current_user)):
 
     return {"status": "success", "data": results}
 
+
+# CREATE NOTES
 
 @app.post("/notes")
 def create_note(note: Note, user: str = Depends(get_current_user)):
@@ -211,11 +220,15 @@ def create_note(note: Note, user: str = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# GET ALL NOTES
+
 @app.get("/notes")
 def get_notes(user: str = Depends(get_current_user)):
     notes = list(notes_collection.find({"owner": user}, {"_id": 0}))
     return {"status": "success", "data": notes}
 
+
+# GET NOTES BY SPECIFIC NOTE ID 
 
 @app.get("/notes/{note_id}")
 def get_note(note_id: str, user: str = Depends(get_current_user)):
@@ -229,6 +242,8 @@ def get_note(note_id: str, user: str = Depends(get_current_user)):
 
     return {"status": "success", "data": note}
 
+
+# UPDATE NOTES BY NOTE ID
 
 @app.put("/notes/{note_id}")
 def update_note(note_id: str, updated: Note, user: str = Depends(get_current_user)):
@@ -249,6 +264,8 @@ def update_note(note_id: str, updated: Note, user: str = Depends(get_current_use
     return {"status": "success", "message": "Updated"}
 
 
+# DELETE NOTES BY NOTE ID
+
 @app.delete("/notes/{note_id}")
 def delete_note(note_id: str, user: str = Depends(get_current_user)):
     result = notes_collection.delete_one({"id": note_id, "owner": user})
@@ -258,9 +275,9 @@ def delete_note(note_id: str, user: str = Depends(get_current_user)):
 
     return {"status": "success", "message": "Deleted"}
 
-# =========================
+
 # AI SUMMARY
-# =========================
+
 
 def generate_summary(text: str):
     try:
@@ -271,6 +288,8 @@ def generate_summary(text: str):
         return response.output_text
     except Exception:
         return text[:100] + "..."
+
+# GENERATE SUMMARY
 
 
 @app.post("/notes/{note_id}/summary")
