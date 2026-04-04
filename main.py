@@ -166,7 +166,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 # SEARCH NOTES BY QUERY
 
- @app.get("/notes/search")
+@app.get("/notes/search")
 def search_notes(query: str, user: str = Depends(get_current_user)):
     safe_query = re.escape(query)
 
